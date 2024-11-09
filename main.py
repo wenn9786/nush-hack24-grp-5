@@ -1,22 +1,48 @@
 import pandas as pd
-import datetime
-from plyer import notification
+import requests
 import json
+import datetime
 import schedule
 import time
+from io import BytesIO
+from plyer import notification
 
-filepath = "./data/test.xlsx"
-df = pd.read_excel(filepath)
-# Convert the 'Registration_Date' to datetime if necessary
-df['Registration_Date'] = pd.to_datetime(df['Registration_Date'], format='%Y-%m-%d').dt.date
+# Google Apps Script URL to trigger the Excel file export
+web_app_url = 'https://script.google.com/macros/s/AKfycbwinajixME2cZiQvyCJANDLng-dCte4g4ERzY2S6C79qPCbt3Uojuvk6FnYrE8u2SZdNg/exec'
 
-def load_config(config_path='config.json'):
+# Function to download the Excel file from Google Drive
+def download_excel_from_drive():
+    # Step 1: Get the file URL from the Google Apps Script
+    response = requests.get(web_app_url)
+    response.raise_for_status()  # Check for request errors
+    file_url = response.text.strip()
+
+    print(file_url)
+    
+    # Convert the file URL to a direct download link
+    download_url = file_url.split("/edit")[0] + "/export?format=xlsx"
+
+    # Download the file content
+    file_response = requests.get(download_url)
+    file_response.raise_for_status()  # Check for download errors
+    
+    # Load the Excel file into a pandas DataFrame
+    excel_data = BytesIO(file_response.content)
+    df = pd.read_excel(excel_data, sheet_name="Registration Dates")
+    return df
+
+# Load configuration settings
+def load_config(config_path="C:/Users/ironk/Downloads/test gsheet/config.json"):
     with open(config_path, 'r') as file:
         config = json.load(file)
     return config
 
 # Load user preferences
 config = load_config()
+
+# Load the Excel data directly from Google Drive
+df = download_excel_from_drive()
+df['Registration_Date'] = pd.to_datetime(df['Registration_Date'], format='%d/%m/%Y').dt.date
 
 def send_reminders():
     reminder_date = today + datetime.timedelta(days=reminder_days_before)
@@ -46,15 +72,6 @@ reminder_date = today + datetime.timedelta(days=reminder_days_before)
 # Filter the rows where the registration date is today or in the future
 upcoming_events = df.loc[df['Registration_Date'] >= today]
 
-'''
-notification.notify(
-    title="Test Notification",
-    message="This is a test reminder!",
-    timeout=10  # Notification duration in seconds
-)
-'''
-
- 
 # Extract the time from the config (e.g., "08:00")
 reminder_time_str = config["reminder_time"]
 reminder_time = datetime.datetime.strptime(reminder_time_str, "%H:%M").time()
@@ -67,30 +84,24 @@ if datetime.datetime.now() >= reminder_datetime:
     # Trigger the reminder notifications
     send_reminders()
     
-    
 # Adjust the reminder frequency based on user preferences
 if config["notification_frequency"] == "daily":
     schedule.every().day.at(reminder_time_str).do(send_reminders)
 elif config["notification_frequency"] == "weekly":
     schedule.every().week.at(reminder_time_str).do(send_reminders)
+
+# Run scheduled tasks
+
+while True:
+
+    schedule.run_pending()  # Check if any reminder is due
+    '''
+    notification.notify(
+            title=f"Reminder: No event",
+            message=f"NIL",
+            timeout=60  # Notification duration in seconds
+        )'''
+    time.sleep(30)  # Check every minute
+    
     
 
-def update_config(new_settings):
-    config.update(new_settings)
-    with open('config.json', 'w') as file:
-        json.dump(config, file, indent=4)
-
-
-# Example: Change reminder time
-# update_config({"reminder_time": "11:00"})
-
-
-# while True:
-#     schedule.run_pending()  # Check if any reminder is due
-#     time.sleep(60)  # Check every minute
-
-    
-
-
-
-    
