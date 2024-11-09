@@ -32,7 +32,7 @@ def download_excel_from_drive():
     return df
 
 # Load configuration settings
-def load_config(config_path="C:/Users/ironk/Downloads/test gsheet/config.json"):
+def load_config(config_path="config.json"):
     with open(config_path, 'r') as file:
         config = json.load(file)
     return config
@@ -78,6 +78,16 @@ reminder_time = datetime.datetime.strptime(reminder_time_str, "%H:%M").time()
 
 # Set the time for the reminder
 reminder_datetime = datetime.datetime.combine(today, reminder_time)
+
+
+##############################################################################
+### FOR TESTING
+reminder_time_str = "11:17" # change this to match current time + 2 minutes
+reminder_date = today
+reminder_time = datetime.datetime.strptime(reminder_time_str, "%H:%M").time()
+reminder_datetime = datetime.datetime.combine(today, reminder_time)
+##############################################################################
+
 
 # Check if the reminder date matches today
 if datetime.datetime.now() >= reminder_datetime:
